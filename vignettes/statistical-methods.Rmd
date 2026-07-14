@@ -1,0 +1,296 @@
+---
+title: "Statistical methods and step-by-step manual"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Statistical methods and step-by-step manual}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", eval = FALSE)
+```
+
+This vignette is the single reference for every model equation used in
+the TRACE-Asthma pipeline, paired with the exact function that implements
+it and a runnable step-by-step example. Read it top to bottom for a full
+worked analysis, or jump to any section for the formula behind a specific
+function. All code below runs unmodified against the bundled
+`simulated_benchmark_cohort` -- see `vignette("simulating-data")` for
+what that dataset contains.
+
+```{r setup}
+library(traceAsthma)
+data(simulated_benchmark_cohort)
+sim <- simulated_benchmark_cohort
+```
+
+## Overview: the full architecture
+
+$$\text{SNP} \rightarrow \text{MPRS} \rightarrow \text{CpG methylation} \rightarrow \text{eQTM score} \rightarrow \text{TF activity} \rightarrow \text{TRACE score} \rightarrow \text{Asthma risk}$$
+
+Each arrow above corresponds to one numbered step below. Steps 1-2 are
+optional (genotype-dependent); everything from Step 3 onward works with
+methylation + expression + clinical data alone.
+
+---
+
+## Step 1: Quality control
+
+No model formula here -- QC applies threshold rules to summary statistics
+before any modeling begins.
+
+| Check | Rule | Function |
+|---|---|---|
+| Variant call rate | retain if $\geq 0.95$ | `qc_genotype()` |
+| Hardy-Weinberg equilibrium | retain if $P_{HWE} \geq 10^{-6}$ | `qc_genotype()` |
+| Minor allele frequency | retain if $\geq 0.01$ | `qc_genotype()` |
+| Methylation probe detection | retain if fail rate $\leq 0.05$ | `qc_methylation()` |
+| Gene expression | retain if count $\geq 6$ in $\geq 3$ samples | `qc_rnaseq()` |
+
+```{r step1}
+keep_genes <- qc_rnaseq(sim$expression, min_count = 6, min_samples = 3)
+length(keep_genes)
+```
+
+---
+
+## Step 2: Multi-trait polygenic risk score (MPRS)
+
+**Trait-specific PRS**, for individual $i$ and trait $t$:
+
+$$PRS_{i,t} = \sum_{j=1}^{m_t} \beta_{j,t} G_{ij}$$
+
+where $G_{ij}$ is genotype dosage and $\beta_{j,t}$ is the posterior SNP
+effect size for trait $t$ (from PRS-CSx/SBayesRC, computed upstream).
+
+**Multi-trait combination**, via elastic-net regression against asthma status:
+
+$$MPRS_i = \sum_t w_t \, PRS_{i,t}$$
+
+```{r step2}
+eff <- setNames(rnorm(5, 0, 0.1), colnames(sim$dosage)[1:5])
+prs_asthma <- compute_prs(sim$dosage[, 1:5], eff)
+
+prs_matrix <- cbind(PRS_Asthma = prs_asthma)  # add more trait-specific PRS columns as available
+mprs_fit <- compute_mprs(prs_matrix, sim$clinical$asthma)
+head(mprs_fit$mprs)
+```
+
+---
+
+## Step 3: Cis/trans eQTM discovery
+
+For each candidate CpG-gene pair, fit:
+
+$$Y_g = \alpha_0 + \alpha_1 M_c + \mathbf{C}\gamma + \epsilon$$
+
+where $Y_g$ is gene expression, $M_c$ is CpG methylation, and $\mathbf{C}$
+is a covariate matrix (age, sex, ancestry PCs, cell composition, ...).
+Classified as cis if $|\text{distance}| < 1\text{Mb}$, else trans; FDR
+control (Benjamini-Hochberg) applied separately within each class.
+
+```{r step3}
+eqtm_table <- discover_eqtm(sim$methylation, sim$expression, sim$eqtm_pairs,
+                             sim$covariates, same_chr = sim$same_chr, fdr_threshold = 0.05)
+head(eqtm_table)
+```
+
+**A note on thresholds in this tutorial**: `simulated_benchmark_cohort` is
+a fixed, modest-size (n=300) dataset, and at the field-standard
+`fdr_threshold = 0.05` it may legitimately yield very few or zero
+significant trans-eQTMs -- this is realistic statistical behavior, not a
+bug (see `test_regulon_enrichment()`'s documented zero-row-result
+behavior for exactly this case). For the remainder of this walkthrough we
+relax `fdr_threshold`/`p_threshold` to `1.0` purely so every step below
+has visible output to inspect; **do not do this in a real analysis** --
+use the field-standard thresholds documented in each function and expect
+that some steps may legitimately produce few or no hits at modest sample
+sizes.
+
+```{r step3_relaxed}
+eqtm_table <- discover_eqtm(sim$methylation, sim$expression, sim$eqtm_pairs,
+                             sim$covariates, same_chr = sim$same_chr, fdr_threshold = 1.0)
+```
+
+### Asthma-relevant filtering
+
+Independent association tests for the CpG and the target gene:
+
+$$\text{logit}(P(\text{Asthma})) = \beta_0 + \beta_1 \text{CpG} + \mathbf{C}\gamma$$
+$$\text{logit}(P(\text{Asthma})) = \beta_0 + \beta_1 \text{Expression} + \mathbf{C}\gamma$$
+
+```{r step3b}
+filtered <- filter_asthma_relevant(eqtm_table, sim$methylation, sim$expression,
+                                    sim$clinical$asthma, sim$covariates, p_threshold = 1.0)
+```
+
+### Mediation testing
+
+Indirect effect along $\text{CpG} \rightarrow \text{Expression} \rightarrow \text{Asthma}$:
+
+$$IE = a \times b$$
+
+where $a$ is the CpG-expression effect and $b$ is the expression-asthma
+effect conditional on CpG, with bootstrap confidence intervals.
+
+```{r step3c}
+mediation_table <- test_mediation(filtered, sim$methylation, sim$expression,
+                                   sim$clinical$asthma, sim$covariates, n_boot = 2000, p_threshold = 1.0)
+```
+
+### eQTM score
+
+Correlation pruning ($|r| > 0.90$ collapsed) followed by elastic-net selection:
+
+$$eQTM_i = \sum_{j=1}^{k} w_j M_{ij}$$
+
+```{r step3d}
+eqtm_meth <- sim$methylation[unique(mediation_table$cpg), , drop = FALSE]
+eqtm_fit <- compute_eqtm_score(eqtm_meth, sim$clinical$asthma)
+head(eqtm_fit$eqtm_score)
+```
+
+---
+
+## Step 4: Regulatory network and TF activity
+
+**Data-driven candidate TF discovery** -- hypergeometric enrichment of a
+TF's regulon among trans-eQTM target genes:
+
+$$P(X \geq n_{\text{overlap}}) = 1 - F_{\text{hyper}}(n_{\text{overlap}} - 1;\ n_{\text{target}},\ n_{\text{bg}} - n_{\text{target}},\ \text{regulon size})$$
+
+```{r step4a}
+trans_targets <- unique(mediation_table$gene[mediation_table$type == "trans"])
+regulons_candidate <- build_regulons(sim$regulon_db, target_universe = trans_targets)
+enrichment <- test_regulon_enrichment(regulons_candidate, target_genes = trans_targets,
+                                       background_genes = rownames(sim$expression), fdr_threshold = 1.0)
+enrichment
+```
+
+**TF activity inference** -- normalized enrichment score of a TF's full
+regulon among differentially expressed genes (VIPER):
+
+$$A_t = NES_t$$
+
+```{r step4b}
+# IMPORTANT: use each candidate TF's FULL regulon here, not the
+# target_universe-restricted one used for discovery above (see NEWS.md 0.3.2)
+regulons_full <- build_regulons(sim$regulon_db)
+regulons_final <- regulons_full[regulons_full$tf %in% enrichment$tf, ]
+tf_activity <- infer_tf_activity(sim$expression, regulons_final)
+```
+
+---
+
+## Step 5: TRACE score
+
+Univariate FDR screen $\rightarrow$ correlation pruning $\rightarrow$
+bootstrap stability selection $\rightarrow$ elastic-net weighting:
+
+$$TRACE_i = \sum_{t=1}^{m} \theta_t A_{it}$$
+
+```{r step5}
+trace_fit <- compute_trace_score(tf_activity, sim$clinical$asthma)
+summarize_trace_weights(trace_fit)
+```
+
+---
+
+## Step 6: Mechanistic mediation (structural equation model)
+
+$$eQTM = a_0 + a_1 MPRS + \epsilon_1$$
+$$TRACE = b_0 + b_1 eQTM + \epsilon_2$$
+$$Asthma = c_0 + c_1 MPRS + c_2 eQTM + c_3 TRACE + \epsilon_3$$
+
+Direct effect $= c_1$; indirect effect $= a_1 \times b_1 \times c_3$;
+total effect $=$ direct $+$ indirect.
+
+```{r step6}
+sem_data <- data.frame(mprs = mprs_fit$mprs, eqtm = eqtm_fit$eqtm_score,
+                        trace = trace_fit$trace_score, asthma = sim$clinical$asthma)
+sem_result <- fit_mediation_sem(sem_data)
+summarize_mediation(sem_result)
+```
+
+---
+
+## Step 7: Integrated asthma risk model
+
+$$\text{logit}(P(\text{Asthma})) = \beta_0 + \beta_1 MPRS + \beta_2 eQTM + \beta_3 TRACE + \beta_4 Age + \beta_5 Sex + \beta_6 BMI + \beta_7 Smoking$$
+
+```{r step7}
+model_data <- data.frame(asthma = sim$clinical$asthma, mprs = mprs_fit$mprs,
+                          eqtm = eqtm_fit$eqtm_score, trace = trace_fit$trace_score,
+                          age = sim$clinical$age, sex = sim$clinical$sex)
+risk_model <- fit_risk_model(model_data)
+summary(risk_model)
+
+nested <- compare_nested_models(model_data)
+nested
+```
+
+---
+
+## Step 8: Validation
+
+$$\text{AUROC} = P(\hat{p}_{\text{case}} > \hat{p}_{\text{control}})$$
+$$\text{Calibration slope} = \beta_1 \text{ in } \text{logit}(\text{observed}) = \beta_0 + \beta_1 \text{logit}(\hat{p})$$
+$$\text{NRI} = \left[P(\hat{p}\uparrow \mid \text{case}) - P(\hat{p}\downarrow \mid \text{case})\right] + \left[P(\hat{p}\downarrow \mid \text{control}) - P(\hat{p}\uparrow \mid \text{control})\right]$$
+
+```{r step8}
+pred <- predict(risk_model, type = "response")
+val <- validate_model(model_data$asthma, pred)
+val
+```
+
+---
+
+## Step 9: Clinical interpretation
+
+Absolute predicted risk at percentile profiles of a chosen score, holding
+other covariates at their sample median:
+
+$$\Delta \hat{p} = \hat{p}(\text{score}_{90th}) - \hat{p}(\text{score}_{10th})$$
+
+```{r step9}
+interp <- interpret_clinical_relevance(risk_model, model_data, validation = val,
+                                        sem_result = sem_result)
+print(interp)
+```
+
+---
+
+## Step 10: Reporting
+
+```{r step10}
+# Publication tables
+export_table(format_nested_model_table(nested), "table1_nested_models.csv")
+export_table(format_coefficient_table(risk_model), "table2_coefficients.csv")
+export_table(format_mediation_table(sem_result), "table3_mediation.csv")
+
+# 600 dpi figures
+plot_nested_auc(nested, path = "figure1_nested_auc.tiff")
+plot_trace_weights(trace_fit, path = "figure2_trace_weights.tiff")
+plot_calibration(val, path = "figure3_calibration.tiff")
+plot_mediation_path(sem_result, path = "figure4_mediation.pdf")
+```
+
+---
+
+## Quick-reference formula table
+
+| Step | Model | Formula | Function |
+|---|---|---|---|
+| 2 | Trait PRS | $PRS_{i,t} = \sum_j \beta_{j,t} G_{ij}$ | `compute_prs()` |
+| 2 | MPRS | $MPRS_i = \sum_t w_t PRS_{i,t}$ | `compute_mprs()` |
+| 3 | eQTM | $Y_g = \alpha_0 + \alpha_1 M_c + C\gamma + \epsilon$ | `discover_eqtm()` |
+| 3 | Mediation | $IE = a \times b$ | `test_mediation()` |
+| 3 | eQTM score | $eQTM_i = \sum_j w_j M_{ij}$ | `compute_eqtm_score()` |
+| 4 | TF enrichment | hypergeometric $P(X \geq n_{\text{overlap}})$ | `test_regulon_enrichment()` |
+| 4 | TF activity | $A_t = NES_t$ | `infer_tf_activity()` |
+| 5 | TRACE score | $TRACE_i = \sum_t \theta_t A_{it}$ | `compute_trace_score()` |
+| 6 | Mediation SEM | direct + indirect ($a_1 b_1 c_3$) = total | `fit_mediation_sem()` |
+| 7 | Risk model | $\text{logit}(P) = \beta_0 + \sum \beta_k X_k$ | `fit_risk_model()` |
+| 8 | Discrimination | AUROC, calibration slope, NRI, IDI | `validate_model()` |
+| 9 | Clinical relevance | $\Delta \hat{p}$ across score percentiles | `interpret_clinical_relevance()` |

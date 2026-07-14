@@ -1,0 +1,86 @@
+Package: traceAsthma
+Type: Package
+Title: TRACE-Asthma: A Mechanistic Multi-Omics Asthma Risk Model
+Version: 0.3.5
+Authors@R: c(
+    person("Eskezeia", "Yihunie Dessie",
+           email = "estu2003@gmail.com",
+           role = c("aut", "cre", "cph"),
+           comment = c(
+             Affiliation = paste(
+               "Division of Pulmonary, Critical Care, Sleep & Occupational Medicine,",
+               "Indiana University School of Medicine"
+             )
+           ))
+    )
+Description: Implements the TRACE-Asthma pipeline, an end-to-end framework
+    for building and applying a mechanistically informed asthma risk model
+    that integrates a multi-trait polygenic risk score (MPRS), a
+    methylation-derived expression quantitative trait methylation (eQTM)
+    score, and a transcription-factor activity-derived regulatory score
+    (TRACE), under the hypothesized architecture
+    SNP -> MPRS -> CpG methylation -> eQTM -> TF activity -> TRACE -> Asthma.
+    The package provides functions for genotype/methylation/RNA-seq quality
+    control, multi-trait polygenic scoring, cis/trans eQTM discovery with
+    mediation-based filtering, transcription factor activity inference,
+    TRACE score construction with stability selection, structural equation
+    modeling of the mediation pathway, nested cross-validated model
+    training, external validation, and a clinician-facing prediction
+    interface (including an optional Shiny point-of-care app). An adaptive
+    pipeline entry point (run_trace_asthma_auto()) inspects whichever data
+    modalities a user actually supplies -- e.g. only CpG methylation, gene
+    expression, asthma status, age, sex, and ancestry, with no genotype or
+    BMI/smoking data -- and builds the best-supported model automatically,
+    skipping layers the data does not permit. Nature-family-journal-style
+    figure (600 dpi, direct non-generic labeling) and table (fully labeled,
+    footnoted) export functions are provided for every major analysis
+    output. Heavy domain-specific steps (imputation, VIPER/ARACNe network
+    inference, PRS-CSx/SBayesRC scoring) are implemented as documented
+    wrapper functions around the relevant external tools/packages so that
+    sites can plug in their preferred upstream pipelines while using
+    traceAsthma for score construction, mechanistic modeling, prediction,
+    and reporting.
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.1
+Depends:
+    R (>= 4.1.0)
+Imports:
+    stats,
+    utils,
+    tools,
+    grDevices,
+    graphics
+Suggests:
+    glmnet,
+    pROC,
+    PRROC,
+    mediation,
+    boot,
+    lavaan,
+    viper,
+    minfi,
+    sva,
+    dorothea,
+    decoupleR,
+    xgboost,
+    randomForest,
+    rms,
+    dcurves,
+    shiny,
+    writexl,
+    readxl,
+    arrow,
+    DBI,
+    testthat (>= 3.0.0),
+    knitr,
+    rmarkdown,
+    ggplot2
+Config/testthat/edition: 3
+VignetteBuilder: knitr
+biocViews:
+Additional_repositories: https://bioconductor.org/packages/release/bioc
+URL: https://github.com/Eskezeia/traceAsthma
+BugReports: https://github.com/Eskezeia/traceAsthma/issues
