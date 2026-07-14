@@ -39,17 +39,45 @@ build_regulons <- function(regulon_db, confidence_classes = c("A", "B", "C"),
 #'
 #' @param regulons Output of [build_regulons()].
 #' @param target_genes Character vector of genes to test for enrichment
-#'   (e.g. significant trans-eQTM target genes).
+#'   (e.g. significant trans-eQTM target genes). If empty, or if no TF's
+#'   regulon overlaps `background_genes`, this function returns a
+#'   zero-row (but correctly structured) result rather than erroring --
+#'   check `nrow()` of the result and see the Details section below for
+#'   what an empty result means and how to respond to it.
 #' @param background_genes Character vector of all genes in the tested
 #'   universe (e.g. all genes included in the trans-eQTM search space).
 #' @param fdr_threshold FDR threshold for retaining a candidate TF.
 #'   Default 0.05.
 #' @return Data frame with columns `tf`, `n_overlap`, `regulon_size`,
-#'   `p_value`, `fdr`, sorted by `fdr`, filtered to significant TFs.
+#'   `p_value`, `fdr`, sorted by `fdr`, filtered to significant TFs. If
+#'   `target_genes` is empty or no candidate TF has any regulon overlap
+#'   with `background_genes`, returns a zero-row data frame with these
+#'   same columns (not an error) -- this commonly happens when an
+#'   upstream discovery step (e.g. [discover_eqtm()] restricted to
+#'   trans-only pairs) found zero significant trans associations, which
+#'   is a legitimate result at modest sample sizes, not necessarily a bug.
 #' @export
 test_regulon_enrichment <- function(regulons, target_genes, background_genes,
                                      fdr_threshold = 0.05) {
+  empty_result <- data.frame(tf = character(0), n_overlap = integer(0),
+                              regulon_size = integer(0), p_value = numeric(0),
+                              fdr = numeric(0))
+
+  if (length(target_genes) == 0) {
+    warning("test_regulon_enrichment(): `target_genes` is empty; returning a zero-row result. ",
+            "This typically means the upstream discovery step found no significant trans (or ",
+            "other target-defining) associations to test for TF enrichment -- a legitimate ",
+            "outcome, especially at modest sample sizes, not necessarily an error.")
+    return(empty_result)
+  }
+
   tfs <- unique(regulons$tf)
+  if (length(tfs) == 0) {
+    warning("test_regulon_enrichment(): `regulons` has no rows (e.g. after restricting to a ",
+            "target_universe with no overlap); returning a zero-row result.")
+    return(empty_result)
+  }
+
   n_bg <- length(background_genes)
   n_target <- length(intersect(target_genes, background_genes))
 
@@ -62,6 +90,8 @@ test_regulon_enrichment <- function(regulons, target_genes, background_genes,
     p <- stats::phyper(n_overlap - 1, n_target, n_bg - n_target, regulon_size, lower.tail = FALSE)
     data.frame(tf = tf, n_overlap = n_overlap, regulon_size = regulon_size, p_value = p)
   }))
+
+  if (is.null(res) || nrow(res) == 0) return(empty_result)
 
   res$fdr <- stats::p.adjust(res$p_value, method = "BH")
   res <- res[order(res$fdr), ]

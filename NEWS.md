@@ -1,3 +1,25 @@
+# traceAsthma 0.3.3
+
+- **New vignette, `vignette("statistical-methods")`**: a single reference
+  pairing every model formula in the pipeline (trait PRS, MPRS, eQTM
+  linear model, mediation indirect effect, eQTM score, hypergeometric TF
+  enrichment, VIPER TF activity, TRACE score, mediation SEM path
+  equations, integrated logistic risk model, AUROC/calibration/NRI,
+  clinical-relevance absolute risk) with the exact function that
+  implements it and a runnable step-by-step worked example against the
+  bundled `simulated_benchmark_cohort`, plus a one-page quick-reference
+  formula table at the end.
+- **Bug fix**: `test_regulon_enrichment()` crashed with a confusing
+  "incorrect number of dimensions" error when `target_genes` was empty or
+  no candidate TF's regulon overlapped `background_genes` (e.g. when an
+  upstream trans-eQTM discovery step legitimately found zero significant
+  associations, which is realistic behavior at modest sample sizes, not
+  necessarily a bug). Found while verifying the new vignette's worked
+  example against `simulated_benchmark_cohort` at a strict FDR threshold.
+  Now returns a well-formed, zero-row result with the correct columns and
+  an informative warning explaining the likely cause, instead of
+  erroring.
+
 # traceAsthma 0.3.2
 
 - **Bug fix / robustness**: `infer_tf_activity()` now validates regulon

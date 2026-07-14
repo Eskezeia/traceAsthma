@@ -138,9 +138,11 @@ validate_cohort_alignment(methylation = methylation, clinical = clinical)
 
 See `vignette("trace-asthma-pipeline")` for the full walkthrough (including
 the fully-specified pipeline with genotype/MPRS and TRACE layers),
-`vignette("simulating-data")` for testing the pipeline before real data
-arrives, and `vignette("clinical-deployment-notes")` for validation,
-regulatory, and publishing guidance.
+`vignette("statistical-methods")` for every model formula paired with its
+function and a step-by-step worked example, `vignette("simulating-data")`
+for testing the pipeline before real data arrives, and
+`vignette("clinical-deployment-notes")` for validation, regulatory, and
+publishing guidance.
 
 ## Package structure
 
