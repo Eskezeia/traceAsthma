@@ -1,0 +1,222 @@
+---
+title: "The TRACE-Asthma pipeline, end to end"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{The TRACE-Asthma pipeline, end to end}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+```
+
+## Overview
+
+This vignette walks through the full TRACE-Asthma pipeline on the tiny,
+fully synthetic `example_cohort` dataset bundled with the package (5
+patients, 2 SNPs, 2 CpGs, 4 genes, 3 transcription factors). The dataset
+exists purely so every stage runs in seconds and every intermediate
+number can be hand-checked -- it is **not** sized or powered to produce a
+meaningful eQTM discovery or risk model, and none of the numbers below
+should be interpreted biologically.
+
+```{r setup}
+library(traceAsthma)
+data(example_cohort)
+str(example_cohort, max.level = 1)
+```
+
+## Stage 1: quality control
+
+Genotype, methylation, and RNA-seq QC operate on precomputed summary
+statistics (call rates, detection P-values, HWE P-values) rather than
+raw IDAT/FASTQ/PLINK files, so that `traceAsthma` has no hard dependency
+on the (very large) upstream genomics toolchain. See `?qc_genotype`,
+`?qc_methylation`, `?qc_rnaseq` for the expected inputs; a recommended
+shell-level upstream pipeline (PLINK2, minfi, STAR/featureCounts) is
+documented in `vignette("upstream-pipeline")`.
+
+```{r}
+keep_genes <- qc_rnaseq(example_cohort$expression, min_count = 50, min_samples = 2)
+keep_genes
+```
+
+## Stage 2: eQTM discovery
+
+```{r}
+eqtm_table <- discover_eqtm(
+  methylation = example_cohort$methylation,
+  expression  = example_cohort$expression,
+  pairs       = example_cohort$eqtm_pairs,
+  covariates  = data.frame(age = example_cohort$covariates$age), # small n -> few covariates
+  same_chr    = example_cohort$same_chr,
+  fdr_threshold = 1.0  # relaxed threshold; this toy dataset has essentially no power
+)
+eqtm_table
+```
+
+## Stage 3: asthma-relevant filtering and mediation
+
+```{r}
+filtered <- filter_asthma_relevant(
+  eqtm_table, example_cohort$methylation, example_cohort$expression,
+  example_cohort$clinical$asthma,
+  data.frame(age = example_cohort$covariates$age),
+  p_threshold = 1.0
+)
+filtered
+```
+
+Mediation testing (`test_mediation()`) and elastic-net-based scoring
+(`compute_eqtm_score()`, `compute_trace_score()`, `compute_mprs()`)
+require the `mediation` and `glmnet` packages respectively; install them
+with `install.packages(c("mediation", "glmnet"))` to run the remaining
+stages. They are intentionally listed in `Suggests` rather than
+`Imports` so that the lightweight QC/discovery/prediction functions above
+can be used without pulling in the full modeling stack.
+
+## Stage 4: regulatory network and TF activity
+
+```{r}
+regulons <- build_regulons(example_cohort$regulon_db, confidence_classes = c("A", "B", "C"))
+enrichment <- test_regulon_enrichment(
+  regulons, target_genes = c("IL4", "IL5", "IL13"),
+  background_genes = rownames(example_cohort$expression), fdr_threshold = 1.0
+)
+enrichment
+```
+
+## Stages 5-9: TRACE score, MPRS, mediation SEM, integrated model, validation
+
+These stages follow the same pattern and are documented individually:
+`?compute_trace_score`, `?compute_mprs`, `?fit_mediation_sem`,
+`?fit_risk_model`, `?compare_nested_models`, `?nested_cv`,
+`?validate_model`, `?decision_curve`. For a full real-cohort run, the
+single entry point is:
+
+```r
+result <- run_trace_asthma_pipeline(
+  genotype_dosage = NULL,          # omit to skip the MPRS layer
+  methylation = methylation,       # CpGs x subjects
+  expression = expression,         # genes x subjects
+  eqtm_pairs = eqtm_pairs,
+  regulon_db = regulon_db,
+  clinical = clinical,             # must include an `asthma` (0/1) column
+  covariates = covariates,
+  seed = 42
+)
+```
+
+`result$deployable_model` is then ready for [`saveRDS()`] and deployment
+via [`predict_asthma_risk()`] -- see `vignette("clinical-deployment-notes")`.
+
+## Predicting risk for a new patient
+
+Once you have a fitted `deployable_model` (either from
+`run_trace_asthma_pipeline()` or assembled manually with
+`build_deployable_model()`), scoring a new patient requires only their
+methylation and expression data:
+
+```r
+new_risk <- predict_asthma_risk(
+  model = deployable_model,
+  methylation = new_patient_methylation,   # CpGs x 1 patient
+  expression  = new_patient_expression,    # genes x 1 patient
+  clinical    = data.frame(age = 34, sex = "F", bmi = 24.1, smoking = "never")
+)
+new_risk
+```
+
+The returned data frame includes the intermediate `eqtm_score` and
+`trace_score` alongside `predicted_probability`, so a clinician or
+genetic counselor reviewing the result can see which molecular layer is
+driving a given patient's risk estimate rather than only the final
+number.
+
+## Adapting to whatever data you actually have
+
+Most real datasets don't include every modality in the full design.
+`run_trace_asthma_auto()` inspects what you supply -- at minimum
+methylation, expression, and an asthma outcome -- and builds the
+best-supported model, skipping the MPRS layer if you have no genotype
+data and the TRACE layer if you have no regulon database:
+
+```{r}
+# e.g. a user with only CpG data, gene expression, asthma status, age and sex
+clinical_partial <- example_cohort$clinical[, c("patient_id", "asthma", "age", "sex")]
+
+plan <- detect_available_data(
+  methylation = example_cohort$methylation,
+  expression  = example_cohort$expression,
+  clinical    = clinical_partial,
+  eqtm_pairs  = example_cohort$eqtm_pairs
+  # no genotype_dosage, no mprs_effect_sizes, no regulon_db
+)
+plan
+```
+
+`run_trace_asthma_auto()` runs this detection automatically and proceeds
+with the maximal model your data supports -- call it exactly like
+`run_trace_asthma_pipeline()`, just without needing to specify which
+layers to skip.
+
+## Checking what you need to install
+
+```{r}
+list_dependencies()
+```
+
+Every stage up through eQTM discovery, regulon filtering/enrichment, the
+final logistic risk model, and all table/figure export functions run on
+base R alone; `glmnet`, `mediation`, `lavaan`, and `viper`/`decoupleR`
+are only needed for elastic-net scoring, mediation testing, structural
+equation modeling, and TF activity inference respectively, and are
+requested with an actionable install message only when actually needed.
+
+## Publication-quality figures and tables
+
+Every major output has a matching Nature-style export function: 600 dpi
+figures with direct, non-generic labeling, and fully-labeled, footnoted
+tables.
+
+```{r, eval = FALSE}
+# Figures (600 dpi, sans-serif, colorblind-safe palette)
+plot_nested_auc(result$nested_comparison, path = "figure2_nested_auc.tiff")
+plot_trace_weights(result$trace_fit, path = "figure3_trace_weights.png")
+plot_mediation_path(sem_result, path = "figure4_mediation.pdf")  # vector, no rasterization
+
+# Tables (fully labeled headers, footnoted abbreviations)
+tbl1 <- format_nested_model_table(result$nested_comparison)
+export_table(tbl1, "table1_nested_models.csv")
+
+tbl2 <- format_coefficient_table(
+  result$risk_model,
+  variable_labels = c(eqtm = "Methylation eQTM score (per SD)",
+                       trace = "TRACE score (per SD)", age = "Age (years)")
+)
+export_table(tbl2, "table2_coefficients.csv")
+```
+
+## Translating statistics into clinical relevance
+
+Odds ratios and AUC answer "is this associated" and "does this
+discriminate." `interpret_clinical_relevance()` answers the question a
+clinician actually asks: how much does this change a specific patient's
+estimated risk, can that number be trusted, and is there a modifiable
+step in the pathway. It computes absolute predicted risk at low/median/
+high values of a score (holding other covariates at their sample
+median), and layers in a calibration trustworthiness statement and a
+mediation-based mechanistic statement when those results are supplied:
+
+```{r, eval = FALSE}
+interp <- interpret_clinical_relevance(
+  risk_model = result$risk_model,
+  data = result$model_data,
+  validation = validate_model(result$model_data$asthma,
+                               predict(result$risk_model, type = "response")),
+  sem_result = sem_result,   # from fit_mediation_sem()
+  outcome_label = "asthma"
+)
+print(interp)
+```

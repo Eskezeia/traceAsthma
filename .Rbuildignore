@@ -1,0 +1,7 @@
+^data-raw$
+^\.github$
+^README\.Rmd$
+^\.Rproj\.user$
+^.*\.Rproj$
+^finalize_package\.R$
+^WINDOWS_SETUP\.md$

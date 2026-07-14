@@ -1,0 +1,23 @@
+citHeader("To cite traceAsthma in publications, please use both entries:")
+
+bibentry(
+  bibtype  = "Manual",
+  title    = "traceAsthma: A Mechanistic Multi-Omics Asthma Risk Model",
+  author   = person("Eskezeia", "Yihunie Dessie",
+                     comment = c(Affiliation = paste(
+                       "Division of Pulmonary, Critical Care, Sleep & Occupational Medicine,",
+                       "Indiana University School of Medicine"
+                     ))),
+  year     = "2026",
+  note     = "R package version 0.2.0",
+  url      = "https://github.com/Eskezeia/traceAsthma"
+)
+
+bibentry(
+  bibtype  = "Article",
+  title    = "TRACE-Asthma: mechanistic multi-omics integration of genetic, epigenetic, and transcriptional regulatory risk in asthma",
+  author   = person("Eskezeia", "Yihunie Dessie"),
+  journal  = "Manuscript in preparation",
+  year     = "2026",
+  note     = "Update this entry with the final journal, volume, pages, and DOI once published."
+)

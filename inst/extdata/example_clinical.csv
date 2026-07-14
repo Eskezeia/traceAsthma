@@ -1,0 +1,6 @@
+"patient_id","asthma","age","sex","bmi","smoking"
+"P001",1,34,"F",24.1,"never"
+"P002",0,41,"F",27.8,"former"
+"P003",1,28,"M",22.6,"never"
+"P004",1,52,"F",31.2,"current"
+"P005",0,37,"M",25.9,"never"
