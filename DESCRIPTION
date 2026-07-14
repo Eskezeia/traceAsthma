@@ -1,7 +1,7 @@
 Package: traceAsthma
 Type: Package
 Title: TRACE-Asthma: A Mechanistic Multi-Omics Asthma Risk Model
-Version: 0.3.5
+Version: 0.3.6
 Authors@R: c(
     person("Eskezeia", "Yihunie Dessie",
            email = "estu2003@gmail.com",

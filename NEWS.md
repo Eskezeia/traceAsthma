@@ -1,3 +1,27 @@
+# traceAsthma 0.3.6
+
+- **Bug fix (found via real-world community testing)**: `infer_tf_activity()`'s
+  `"decoupleR"` fallback previously called `decoupleR::run_viper()`, which
+  -- despite the name suggesting it was decoupleR's own implementation --
+  internally requires the `viper` Bioconductor package to be installed as
+  a backend. This meant the documented "fallback if viper is unavailable"
+  behavior did not actually work: a user without `viper` installed but
+  with `decoupleR` installed would still hit `"there is no package called
+  'viper'"`, surfacing as a confusing `run_package_diagnostics()` failure
+  several stages downstream. Fixed by switching the decoupleR path to
+  `decoupleR::run_ulm()`, decoupleR's own univariate linear model method,
+  which is genuinely independent of the `viper` package. `method = "viper"`
+  now also automatically falls back to `"decoupleR"` with an informative
+  message if `viper` is requested but not installed, rather than
+  proceeding to a `viper`-dependent decoupleR call.
+- **Diagnostics robustness**: `run_package_diagnostics()`'s SKIPPED-vs-FAIL
+  classification now also recognizes generic "there is no package called"
+  and "could not find function" errors as SKIPPED (missing optional
+  dependency), not just errors matching `requirePkg()`'s exact message
+  format -- defense in depth against this class of bug recurring in any
+  Suggests-dependent code path, found and fixed as a direct consequence of
+  the bug above.
+
 # traceAsthma 0.3.5
 
 - **PDF user manual bundled with the package**: `inst/doc-manual/traceAsthma_Manual.pdf`

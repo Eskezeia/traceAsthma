@@ -102,19 +102,26 @@ test_regulon_enrichment <- function(regulons, target_genes, background_genes,
 #'
 #' \deqn{A_t = NES_t}
 #'
-#' Wraps `viper::viper()` / `decoupleR`'s VIPER-equivalent
-#' (`decoupleR::run_viper()`) to estimate per-subject TF activity as the
-#' normalized enrichment score (NES) of each TF's regulon among
-#' differentially-expressed genes, rather than relying on the TF's own
-#' transcript abundance. Prefers `viper` if installed, falls back to
-#' `decoupleR`.
+#' Estimates per-subject TF activity as the normalized enrichment score
+#' (NES) of each TF's regulon among differentially-expressed genes, rather
+#' than relying on the TF's own transcript abundance. Two independent
+#' backends are supported and require different packages: `method =
+#' "viper"` uses `viper::viper()` directly (requires the `viper`
+#' Bioconductor package); `method = "decoupleR"` uses
+#' `decoupleR::run_ulm()`, decoupleR's own univariate linear model method,
+#' which is genuinely independent of the `viper` package (unlike
+#' `decoupleR::run_viper()`, which internally requires `viper` to be
+#' installed as a backend and therefore is *not* a viper-free fallback --
+#' this function deliberately avoids that wrapper for exactly that reason;
+#' see `NEWS.md` version 0.3.6).
 #'
 #' @param expression Numeric matrix, genes x subjects (normalized;
 #'   VST/TPM/log-CPM as used elsewhere in the pipeline).
 #' @param regulons Output of [build_regulons()], with columns `tf`,
 #'   `target`, `mor`.
 #' @param method Either `"viper"` or `"decoupleR"`. Default `"viper"` if
-#'   available, otherwise `"decoupleR"`.
+#'   the `viper` package is installed, otherwise falls back to
+#'   `"decoupleR"` automatically -- see Details.
 #' @param min_targets Minimum regulon size to retain a TF. Default 5. Applied
 #'   to each TF's target set *after* intersecting with `rownames(expression)`
 #'   -- if you restricted `regulons` to a small target universe upstream
@@ -123,7 +130,8 @@ test_regulon_enrichment <- function(regulons, target_genes, background_genes,
 #'   function will correctly, but perhaps surprisingly, drop TFs that had
 #'   plenty of true targets but too few survived the earlier restriction.
 #' @return Numeric matrix, TFs x subjects, of inferred activity scores
-#'   (NES).
+#'   (NES for `"viper"`; t-statistic-based scores for `"decoupleR"`, on a
+#'   comparable relative scale for downstream use in [compute_trace_score()]).
 #' @export
 infer_tf_activity <- function(expression, regulons, method = c("viper", "decoupleR"),
                                min_targets = 5) {
@@ -169,7 +177,16 @@ infer_tf_activity <- function(expression, regulons, method = c("viper", "decoupl
   }
   regulons <- regulons[regulons$tf %in% eligible_tfs, , drop = FALSE]
 
-  if (method == "viper" && requireNamespace("viper", quietly = TRUE)) {
+  viper_available <- requireNamespace("viper", quietly = TRUE)
+  if (method == "viper" && !viper_available) {
+    message("infer_tf_activity(): method = \"viper\" requested but the viper package is not ",
+            "installed; automatically falling back to method = \"decoupleR\" (run_ulm, which ",
+            "does not require viper). Install viper (BiocManager::install(\"viper\")) to use ",
+            "the viper backend directly.")
+    method <- "decoupleR"
+  }
+
+  if (method == "viper") {
     reg_list <- split(regulons, regulons$tf)
     reg_list <- reg_list[vapply(reg_list, function(r) nrow(r) >= min_targets, logical(1))]
     viper_regulon <- lapply(reg_list, function(r) {
@@ -180,13 +197,16 @@ infer_tf_activity <- function(expression, regulons, method = c("viper", "decoupl
     return(activity)
   }
 
-  requirePkg("decoupleR", "TF activity inference (VIPER unavailable)")
+  # decoupleR path: run_ulm() is decoupleR's own univariate linear model
+  # method and does NOT depend on the viper package (unlike
+  # decoupleR::run_viper(), which does -- deliberately not used here).
+  requirePkg("decoupleR", "TF activity inference (decoupleR backend, run_ulm)")
   net <- regulons[, c("tf", "target", "mor")]
   colnames(net) <- c("source", "target", "mor")
-  res <- decoupleR::run_viper(mat = expression, network = net, minsize = min_targets)
+  res <- decoupleR::run_ulm(mat = expression, network = net, minsize = min_targets)
   # decoupleR returns long format; pivot to TF x sample matrix
   wide <- stats::reshape(
-    as.data.frame(res[res$statistic == "viper", c("source", "condition", "score")]),
+    as.data.frame(res[res$statistic == "ulm", c("source", "condition", "score")]),
     idvar = "source", timevar = "condition", direction = "wide"
   )
   mat <- as.matrix(wide[, -1])

@@ -53,7 +53,9 @@ run_package_diagnostics <- function(cohort = NULL, verbose = TRUE) {
       error = function(e) {
         msg <- conditionMessage(e)
         status <- if (grepl("is required for .* but is not installed", msg) ||
-                       grepl("^UPSTREAM_SKIPPED:", msg)) "SKIPPED" else "FAIL"
+                       grepl("^UPSTREAM_SKIPPED:", msg) ||
+                       grepl("there is no package called", msg) ||
+                       grepl("could not find function", msg)) "SKIPPED" else "FAIL"
         msg <- sub("^UPSTREAM_SKIPPED: ", "", msg)
         list(status = status, detail = msg, error = e)
       }

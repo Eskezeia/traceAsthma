@@ -25,7 +25,9 @@ specific gene set (e.g. trans-eQTM targets).}
 \item{background_genes}{Character vector of all genes in the tested universe.}
 \item{fdr_threshold}{FDR threshold for retaining a candidate TF. Default 0.05.}
 \item{expression}{Numeric matrix, genes x subjects (normalized).}
-\item{method}{Either \code{"viper"} or \code{"decoupleR"}.}
+\item{method}{Either \code{"viper"} or \code{"decoupleR"}. Default \code{"viper"}
+if installed, otherwise automatically falls back to \code{"decoupleR"}
+(via \code{run_ulm()}, which does not require the \code{viper} package).}
 \item{min_targets}{Minimum regulon size to retain a TF. Default 5.}
 }
 \value{
@@ -45,7 +47,9 @@ target gene set (e.g. significant trans-eQTM targets), so candidate TFs
 are nominated from the study's own data rather than picked a priori from
 prior literature. \code{infer_tf_activity()} estimates per-subject TF
 activity, \eqn{A_t = NES_t}, from the coordinated enrichment of a TF's
-regulon among differentially expressed genes, using VIPER or decoupleR,
+regulon among differentially expressed genes, using VIPER (\code{viper}
+package) or decoupleR's \code{run_ulm()} method (which is genuinely
+independent of the \code{viper} package, unlike \code{decoupleR::run_viper()}),
 rather than the TF's own transcript abundance.
 }
 \examples{
