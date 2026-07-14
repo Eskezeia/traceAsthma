@@ -1,3 +1,35 @@
+# traceAsthma 0.3.2
+
+- **Bug fix / robustness**: `infer_tf_activity()` now validates regulon
+  size (per TF, after intersecting with `rownames(expression)`) *before*
+  delegating to viper/decoupleR, and fails with a specific, actionable
+  `traceAsthma`-level error naming exactly which TF(s) are short and by
+  how much, rather than surfacing decoupleR's internal
+  "Network is empty after intersecting..." message. If some but not all
+  supplied TFs are eligible, the ineligible ones are dropped with an
+  informative warning rather than the whole call failing. This was found
+  via real community usage: a diagnostic pipeline run correctly built a
+  target-universe-restricted regulon for TF *discovery*
+  (`build_regulons(..., target_universe = <trans-eQTM genes>)`), then
+  mistakenly reused that same restricted regulon for activity
+  *inference*, where each candidate TF's regulon should be its full
+  target set. The new error message names this exact failure mode and
+  gives the corrected code pattern directly in the message.
+
+# traceAsthma 0.3.1
+
+- **Bundled community benchmark dataset**: `simulated_benchmark_cohort`
+  ships with the package -- a fixed-seed (`20260714`), realistic-scale
+  (300 subjects, 500 CpGs, 200 genes, 10 TFs) output of
+  `simulate_trace_asthma_cohort()`, identical for every user/install.
+  Intended as a shared reference for comparing pipeline behavior across
+  systems/versions and for reporting reproducible issues. Verified: loads
+  correctly, and `discover_eqtm()` run on it correctly separates causal
+  from null CpG-gene pairs (median P ~0 vs. 0.56 in a representative run).
+  Regenerate via `data-raw/make_simulated_benchmark.R` if the simulator
+  changes; documented in `vignette("simulating-data")`.
+
+
 # traceAsthma 0.3.0
 
 CRAN-readiness and real-world data deployment:

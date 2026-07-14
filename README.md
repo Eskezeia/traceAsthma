@@ -89,8 +89,13 @@ BiocManager::install(c("viper", "minfi", "sva", "dorothea", "decoupleR"))
 ```r
 library(traceAsthma)
 
-# No real data yet? Simulate a realistic cohort with a known ground truth
-# to test the whole pipeline first (see vignette("simulating-data")):
+# No real data yet? Two options with a known ground truth:
+
+# Option A: a fixed, shared community benchmark -- same data for every user,
+# useful for comparing results/reporting issues (300 subjects, 500 CpGs, 200 genes)
+data(simulated_benchmark_cohort)
+
+# Option B: generate your own, at any size/seed (see vignette("simulating-data"))
 sim <- simulate_trace_asthma_cohort(n_subjects = 300, n_cpgs = 500,
                                      n_genes = 200, n_tfs = 8, seed = 42)
 

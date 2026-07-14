@@ -117,6 +117,28 @@ data collection or analysis begins, and adjust `true_effects` to explore
 how large an effect would need to be to reach significance at your planned
 sample size -- a lightweight, code-verified power-simulation workflow.
 
+## A shared benchmark for the community
+
+Because every call to `simulate_trace_asthma_cohort()` without a fixed
+`seed` produces a different dataset, the package also bundles
+`simulated_benchmark_cohort` -- the same call, with a fixed seed, computed
+once and shipped with every install:
+
+```{r}
+data(simulated_benchmark_cohort)
+str(simulated_benchmark_cohort, max.level = 1)
+```
+
+Because it's identical for every user, it's useful as a common reference
+point: if you're comparing pipeline behavior across two machines, R
+versions, or `traceAsthma` releases, or reporting a GitHub issue, running
+against `simulated_benchmark_cohort` instead of a freshly-simulated
+dataset means everyone is looking at exactly the same numbers. At
+`n_subjects = 300`, `n_cpgs = 500`, `n_genes = 200`, `n_tfs = 10`, it's
+also large enough to show realistic discovery behavior (strong causal/null
+P-value separation, non-trivial regulon enrichment) rather than the tiny
+`example_cohort`'s instant-but-underpowered 5 subjects.
+
 ## Moving from simulated to real data
 
 Every pipeline function expects the same object shapes whether the data

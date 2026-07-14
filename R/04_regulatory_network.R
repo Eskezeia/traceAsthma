@@ -85,7 +85,13 @@ test_regulon_enrichment <- function(regulons, target_genes, background_genes,
 #'   `target`, `mor`.
 #' @param method Either `"viper"` or `"decoupleR"`. Default `"viper"` if
 #'   available, otherwise `"decoupleR"`.
-#' @param min_targets Minimum regulon size to retain a TF. Default 5.
+#' @param min_targets Minimum regulon size to retain a TF. Default 5. Applied
+#'   to each TF's target set *after* intersecting with `rownames(expression)`
+#'   -- if you restricted `regulons` to a small target universe upstream
+#'   (e.g. via `build_regulons(..., target_universe = ...)` for a data-driven
+#'   TF discovery step), pass the TF's *full* regulon here instead, or this
+#'   function will correctly, but perhaps surprisingly, drop TFs that had
+#'   plenty of true targets but too few survived the earlier restriction.
 #' @return Numeric matrix, TFs x subjects, of inferred activity scores
 #'   (NES).
 #' @export
@@ -93,9 +99,45 @@ infer_tf_activity <- function(expression, regulons, method = c("viper", "decoupl
                                min_targets = 5) {
   method <- match.arg(method)
 
-  regulon_sizes <- table(regulons$target[regulons$target %in% rownames(expression)],
-                          regulons$tf[regulons$target %in% rownames(expression)])
-  # (kept for potential future use / diagnostics; not required for the calls below)
+  # Validate regulon sizes up front, in terms of genes actually present in
+  # `expression`, and fail with a specific, actionable message naming which
+  # TFs are short and by how much -- rather than letting viper/decoupleR
+  # surface their own internal "network is empty" error, which gives no
+  # indication of *why* or *which TF* caused it.
+  regulons <- regulons[regulons$target %in% rownames(expression), , drop = FALSE]
+  tf_sizes <- table(regulons$tf)
+  tf_sizes_all <- stats::setNames(as.integer(tf_sizes), names(tf_sizes))
+  eligible_tfs <- names(tf_sizes_all)[tf_sizes_all >= min_targets]
+
+  if (length(eligible_tfs) == 0) {
+    short_tfs <- if (length(tf_sizes_all) > 0) {
+      paste(sprintf("%s (%d target%s in expression)", names(tf_sizes_all), tf_sizes_all,
+                     ifelse(tf_sizes_all == 1, "", "s")), collapse = "; ")
+    } else {
+      "none of the supplied regulon's TFs have any targets present in rownames(expression)"
+    }
+    stop(
+      "infer_tf_activity(): no TF has at least min_targets = ", min_targets,
+      " targets overlapping rownames(expression). Per-TF target counts after intersecting ",
+      "with expression: ", short_tfs, ".\n",
+      "This commonly happens when `regulons` was restricted to a small target_universe ",
+      "upstream (e.g. via build_regulons(..., target_universe = <trans-eQTM genes>)) for a ",
+      "TF-discovery/enrichment step -- that restriction is appropriate for discovery, but for ",
+      "activity inference you should pass each candidate TF's FULL regulon instead: ",
+      "e.g. `regulons_full <- build_regulons(regulon_db); ",
+      "regulons_full <- regulons_full[regulons_full$tf %in% candidate_tfs, ]`. ",
+      "Alternatively, lower `min_targets`.",
+      call. = FALSE
+    )
+  }
+  if (length(eligible_tfs) < length(tf_sizes_all)) {
+    dropped <- setdiff(names(tf_sizes_all), eligible_tfs)
+    warning(sprintf(
+      "infer_tf_activity(): dropping %d TF(s) with fewer than min_targets = %d targets in expression: %s.",
+      length(dropped), min_targets, paste(dropped, collapse = ", ")
+    ))
+  }
+  regulons <- regulons[regulons$tf %in% eligible_tfs, , drop = FALSE]
 
   if (method == "viper" && requireNamespace("viper", quietly = TRUE)) {
     reg_list <- split(regulons, regulons$tf)

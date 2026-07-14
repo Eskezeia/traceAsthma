@@ -31,4 +31,8 @@ deliberately tiny so every intermediate score can be hand-verified.
 data(example_cohort)
 str(example_cohort, max.level = 1)
 }
+\seealso{
+\code{\link{simulated_benchmark_cohort}} for a larger, more realistic
+fixed-seed dataset intended as a shared community benchmark.
+}
 \keyword{datasets}
