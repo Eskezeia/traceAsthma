@@ -89,6 +89,10 @@ BiocManager::install(c("viper", "minfi", "sva", "dorothea", "decoupleR"))
 ```r
 library(traceAsthma)
 
+# Recommended first command after any install: verify everything works
+# end to end against the bundled benchmark dataset
+run_package_diagnostics()
+
 # No real data yet? Two options with a known ground truth:
 
 # Option A: a fixed, shared community benchmark -- same data for every user,

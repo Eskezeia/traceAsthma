@@ -1,3 +1,25 @@
+# traceAsthma 0.3.4
+
+- **New: `run_package_diagnostics()`** -- the recommended first command for
+  any new install, a community member verifying a bug report, or checking
+  a new release. Runs the full pipeline (QC/validation, eQTM discovery
+  with ground-truth recovery checking, mediation, eQTM scoring, TF
+  regulon discovery and activity inference with the correct
+  full-regulon-for-inference pattern, TRACE scoring, the integrated risk
+  model, and validation) against the bundled `simulated_benchmark_cohort`
+  (or any user-supplied cohort), and prints a clear PASS/FAIL/SKIPPED
+  report per stage. Stages that fail purely because an optional package
+  is missing -- including *downstream* stages that only fail as a
+  cascading consequence of an earlier skip -- are correctly reported as
+  `SKIPPED`, not `FAIL`, so the final summary never wrongly tells a user
+  to file a bug report for an uninstalled dependency. Verified: 10 PASS /
+  0 FAIL / 5 SKIPPED in this package's own dependency-limited CI
+  environment, with all 5 skips correctly and specifically attributed to
+  `glmnet`/`decoupleR` being absent.
+- This function directly institutionalizes a community-reported diagnostic
+  script (see v0.3.2/0.3.3 entries below) so future users get the
+  corrected, hardened version by default rather than re-deriving it.
+
 # traceAsthma 0.3.3
 
 - **New vignette, `vignette("statistical-methods")`**: a single reference
