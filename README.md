@@ -15,9 +15,7 @@ includes an optional Shiny point-of-care app.
 `vignette("clinical-deployment-notes")` before using this for anything
 beyond research.
 
-**Author:** Eskezeia Yihunie Dessie, PhD — Postdoctoral Research Fellow,
-Division of Pulmonary, Critical Care, Sleep & Occupational Medicine,
-Indiana University School of Medicine.
+**Author:** Eskezeia Yihunie Dessie
 
 ## Project goals
 
