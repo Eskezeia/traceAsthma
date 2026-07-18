@@ -7,58 +7,6 @@ informed multi-omics asthma risk pipeline:
 SNP -> MPRS -> CpG methylation -> eQTM score -> TF activity -> TRACE score -> Asthma risk
 ```
 
-The package covers the full path from raw-ish QC summary statistics
-through a clinician-facing single-patient prediction interface, and
-includes an optional Shiny point-of-care app.
-
-**Status: research software, not a validated clinical tool.** See
-`vignette("clinical-deployment-notes")` before using this for anything
-beyond research.
-
-**Author:** Eskezeia Yihunie Dessie, PhD — Postdoctoral Research Fellow,
-Division of Pulmonary, Critical Care, Sleep & Occupational Medicine,
-Indiana University School of Medicine.
-
-## Project goals
-
-**Scientific goals**
-- Provide a reproducible, auditable implementation of the TRACE-Asthma
-  mechanistic architecture (SNP -> MPRS -> CpG methylation -> eQTM ->
-  TF activity -> TRACE -> asthma risk), so every score in the companion
-  manuscript is traceable to exact, versioned code rather than a
-  one-off analysis script.
-- Formally quantify how much of inherited genetic risk for asthma is
-  statistically mediated through methylation-dependent transcriptional
-  regulation, via the structural equation modeling layer
-  (`fit_mediation_sem()`), rather than only reporting association.
-- Extend the sex-stratified eQTM discovery/replication framework from
-  prior work into a disease-interaction, TF-mediated risk-prediction
-  pipeline with data-driven (not literature-picked) candidate
-  transcription factors (`test_regulon_enrichment()`).
-
-**Engineering goals**
-- Degrade gracefully to whatever data a site actually has
-  (`run_trace_asthma_auto()`) rather than requiring the full genotype +
-  methylation + expression + complete clinical panel specification.
-- Produce submission-ready output directly from the pipeline: 600 dpi
-  Nature-style figures, fully labeled and footnoted tables, and a
-  plain-language clinical-relevance translation layer
-  (`interpret_clinical_relevance()`), so statistical output and
-  manuscript output stay in sync.
-- Ship with a realistic data simulator with an injected, known ground
-  truth (`simulate_trace_asthma_cohort()`), so pipeline correctness and
-  statistical power can be verified before any real cohort data is used.
-- Reach a genuinely installable, documented, tested state -- GitHub +
-  r-universe first, Bioconductor as the realistic longer-term home given
-  the genomics dependency stack (see `vignette("clinical-deployment-notes")`
-  for the current gap list toward that).
-
-**Portfolio goal**
-- This package is also a working demonstration of an end-to-end
-  reproducible bioinformatics/biostatistics pipeline -- QC, statistical
-  modeling, mechanistic causal inference, validation, and deployment --
-  intended as a public, citable artifact of applied multi-omics and
-  causal-ML engineering capability.
 
 ## Installation
 
@@ -182,30 +130,7 @@ utils::browseURL(system.file("doc-manual", "traceAsthma_Manual.pdf", package = "
 | `R/18_data_dictionary.R` | Data dictionary and blank-template generation for real-data mapping |
 | `inst/shiny/app.R` | Point-of-care Shiny app |
 
-## Data requirements
 
-No proprietary, confidential, or patient-identifiable data is included
-anywhere in this package. All bundled examples (`example_cohort`), and
-every example/test/vignette, use either the tiny fully-synthetic
-`example_cohort` or `simulate_trace_asthma_cohort()`'s realistic simulated
-data -- see `vignette("simulating-data")`. Every analysis function expects
-the same object shapes regardless of data source (simulated or real); see
-`data_dictionary()` for the full field-level specification and
-`vignette("simulating-data")` section "Moving from simulated to real data"
-for the import/validation workflow.
-
-## Development notes
-
-This package was authored and unit-tested (core logic via base-R
-equivalents of the `testthat` suite in `tests/testthat/`, since `testthat`
-itself requires CRAN access unavailable in the authoring sandbox) in a
-sandboxed environment without CRAN/Bioconductor network access. `R CMD
-check` confirms 0 errors and full documentation/example coverage; the
-remaining warnings (unbuilt vignettes needing `knitr`, a sandbox locale
-artifact, and Suggests-package availability for checking) are
-environmental to the authoring sandbox, not package defects -- see
-`vignette("clinical-deployment-notes")` for the current, itemized status
-toward full CRAN/Bioconductor submission readiness.
 
 ## License
 
