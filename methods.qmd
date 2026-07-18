@@ -1,0 +1,209 @@
+---
+title: "traceAsthma: Methods & Reproducible Pipeline"
+subtitle: "Sex-Stratified Epigenetic Regulatory Network Analysis of Asthma"
+date: today
+format:
+  pdf:
+    toc: true
+    toc-depth: 3
+    number-sections: true
+    fig-width: 8
+    fig-height: 5
+    geometry: margin=1in
+---
+
+## Overview
+
+This report documents the **traceAsthma** pipeline: a two-stage causal framework tracing
+**SNP → PRS → methylation → eQTM → transcription factor → TRACE score**, applied under a
+sex-stratified / disease-stratified analytical design. It combines the written methods with
+the R code that produces each pipeline stage, so the report and the analysis stay in sync —
+edit the code, re-render, and the figures/tables update automatically.
+
+```{r setup}
+library(tidyverse)
+library(MatrixEQTL)
+library(bnlearn)
+library(igraph)
+# library(traceAsthma)  # uncomment once installed: devtools::install_github("Eskezeia/traceAsthma")
+
+set.seed(2025)  # fixed seed for reproducibility, per Methods
+
+install.packages("tinytex")
+tinytex::install_tinytex()
+
+tinytex::tinytex_root()
+
+```
+
+## Pipeline overview
+
+```{mermaid}
+flowchart TD
+    A["SNP genotypes"] --> B["Polygenic Risk Score (PRS)"]
+    B --> C["DNA Methylation"]
+    C --> D["eQTM Discovery<br/>(5 regression models, cis/trans)"]
+    D --> E["Tier 1: Pooled BH-FDR &lt; 0.05"]
+    E --> F["Tier 2: Effect-size heterogeneity<br/>(Wald test, p_diff &lt; 0.05)"]
+    F --> G["Transcription Factor mapping"]
+    G --> H["Bayesian Network<br/>(hill-climbing, bootstrap τ = 0.85)"]
+    H --> I["Key-Driver Scoring<br/>(out-degree, betweenness, eigenvector)"]
+    I --> J["TRACE Score"]
+    J --> K["External GWAS/eQTL Validation<br/>(MAGMA, TWAS/S-PrediXcan)"]
+    K --> L["Evidence Tiering<br/>A: Convergent | B: Epigenetic-only | C: Genetic-only"]
+```
+
+## Stage 1 — eQTM discovery
+
+Five parallel regression models are fit per dataset (discovery, replication) to characterize
+disease-shared, disease-specific, disease-adjusted, and disease-discordant CpG–gene
+associations. Cis-eQTM pairs are within 1 Mb; all others are trans.
+
+$$Y = \beta_0 + \beta_1 X + \sum_{k=1}^{K} \alpha_k Z_k + \varepsilon \quad \text{(Model 1: disease-combined)}$$
+
+$$Y = \beta_0 + \beta_1 X + \beta_2 D + \beta_3 (X \times D) + \sum_{k=1}^{K} \alpha_k Z_k + \varepsilon \quad \text{(Model 4: disease-interaction)}$$
+
+```{r eqtm-discovery}
+#| label: fig-eqtm-volcano
+#| fig-cap: "Effect size vs. significance across eQTM models (placeholder — replace with real MatrixEQTL output)"
+
+# --- Placeholder: replace with your actual MatrixEQTL call ---
+# eqtm_result <- Matrix_eQTL_engine(
+#   snps = methylation_slice,
+#   gene = expression_slice,
+#   cvrt = covariates_slice,
+#   output_file_name = NULL,
+#   pvOutputThreshold = 0.05,
+#   useModel = modelLINEAR,
+#   verbose = TRUE
+# )
+
+# Simulated placeholder data for scaffold purposes
+set.seed(1)
+sim_eqtm <- tibble(
+  beta = rnorm(2000, 0, 0.4),
+  neg_log10_p = -log10(runif(2000, 1e-8, 1)),
+  model = sample(c("Combined", "Asthma-specific", "Control-specific",
+                    "Interaction", "Adjusted"), 2000, replace = TRUE)
+)
+
+ggplot(sim_eqtm, aes(beta, neg_log10_p, color = model)) +
+  geom_point(alpha = 0.5, size = 1) +
+  geom_hline(yintercept = -log10(0.05), linetype = "dashed", color = "grey40") +
+  labs(x = expression(hat(beta)), y = expression(-log[10](p)),
+       title = "eQTM effect sizes across the five regression models") +
+  theme_minimal()
+```
+
+## Tier 1 / Tier 2 filtering
+
+Precision filtering removes pairs with $SE_i > Q_{0.95}\{SE_{(AS)}, SE_{(HC)}\}$. Remaining
+Model 2/3/4 *p*-values are pooled and BH-corrected to define **Tier 1** ($q < 0.05$); a
+two-sample Wald test on the asthma- vs. control-specific effect estimates then defines
+**Tier 2** ($p_{diff} < 0.05$):
+
+$$z_{diff} = \frac{\hat\beta_{AS} - \hat\beta_{HC}}{\sqrt{SE_{AS}^2 + SE_{HC}^2}}$$
+
+```{r tiering}
+#| label: fig-tier-counts
+#| fig-cap: "Number of CpG–gene pairs retained at each filtering tier (placeholder)"
+
+tier_counts <- tibble(
+  tier = factor(c("All tested", "Precision-filtered", "Tier 1 (BH-FDR)", "Tier 2 (Wald)"),
+                levels = c("All tested", "Precision-filtered", "Tier 1 (BH-FDR)", "Tier 2 (Wald)")),
+  n = c(48210, 41032, 3187, 962)  # placeholder counts — wire up to real pipeline output
+)
+
+ggplot(tier_counts, aes(tier, n)) +
+  geom_col(fill = "#2c7fb8") +
+  geom_text(aes(label = scales::comma(n)), vjust = -0.4) +
+  labs(x = NULL, y = "CpG–gene pairs") +
+  theme_minimal()
+```
+
+## Stage 2 — Bayesian network & key-driver scoring
+
+Tier 2 cis pairs define a directed whitelist $W$ for hill-climbing structure search
+(`bnlearn`), stabilized via bootstrap edge confidence ($R = 200$, $\tau = 0.85$). Key drivers
+are ranked by a composite centrality score:
+
+$$\text{Score}(v) = Z[d^{out}(v)] + Z[b(v)] + Z[e(v)]$$
+
+```{r bayesian-network}
+#| label: fig-bn-graph
+#| fig-cap: "Consensus Bayesian network structure (placeholder graph)"
+
+# --- Placeholder: replace with your bnlearn hill-climbing + boot.strength() output ---
+g <- sample_gnp(30, 0.08, directed = TRUE)
+V(g)$score <- scale(degree(g, mode = "out") + betweenness(g) + eigen_centrality(g)$vector)[,1]
+
+plot(g,
+     vertex.size = 6 + 4 * scales::rescale(V(g)$score, to = c(0, 1)),
+     vertex.color = "#41ab5d", vertex.label = NA,
+     edge.arrow.size = 0.3, main = "Consensus network (placeholder)")
+```
+
+```{r key-drivers}
+#| label: tbl-key-drivers
+
+tibble(
+  gene = paste0("Gene_", 1:10),
+  out_degree = round(rnorm(10, 5, 1.5), 2),
+  betweenness = round(rnorm(10, 20, 6), 2),
+  eigenvector = round(runif(10, 0.4, 1), 2)
+) |>
+  mutate(score = round(scale(out_degree)[,1] + scale(betweenness)[,1] + scale(eigenvector)[,1], 2)) |>
+  arrange(desc(score)) |>
+  knitr::kable(caption = "Top candidate key drivers (placeholder — replace with real Score(v) ranking)")
+```
+
+## External GWAS/eQTL validation
+
+Candidate key drivers are cross-referenced against a GWAS-linked gene set built from GABRIEL/TAGC
+summary statistics via MAGMA and TWAS/S-PrediXcan (GTEx weights), then tested for enrichment:
+
+$$Z_{TWAS} = \frac{w^T Z_{GWAS}}{\sqrt{w^TRw}}$$
+
+```{r evidence-tiering}
+#| label: fig-evidence-tiers
+#| fig-cap: "Evidence tiering of candidate eGenes (placeholder)"
+
+evidence <- tibble(
+  tier = c("A: Convergent", "B: Epigenetic-only", "C: Genetic-only"),
+  n = c(14, 36, 22)
+)
+
+ggplot(evidence, aes(tier, n, fill = tier)) +
+  geom_col(show.legend = FALSE) +
+  scale_fill_manual(values = c("#d7191c", "#fdae61", "#2b83ba")) +
+  labs(x = NULL, y = "Number of genes") +
+  theme_minimal()
+```
+
+## Session info
+
+```{r session-info}
+sessionInfo()
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
