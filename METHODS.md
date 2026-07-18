@@ -1,5 +1,5 @@
-# Methods
 
+# Current project-Methods 
 **Disease-stratified epigenetic regulatory network analysis of asthma** — from cis/trans-eQTM discovery through Bayesian network–based causal key-driver identification.
 
 ---
@@ -95,7 +95,7 @@ All five models were fit independently for cis- and trans-eQTM associations, in 
 
 | Dataset | Cis threshold | Trans threshold |
 |---|---|---|
-| Discovery | nominal *p* < 0.05 | BH-FDR < 0.05 |
+| Discovery |BH-FDR < 0.05  | BH-FDR < 0.05 |
 | Replication | nominal *p* < 0.05 | nominal *p* < 0.05 |
 
 The replication dataset uses a reduced covariate set (age only vs. age + site + plate + PC1 in discovery) — a data-availability limitation reported as such.
@@ -174,7 +174,7 @@ Composite score per node from standardized centrality measures (`igraph`): out-d
 
 $$\text{Score}(v) = Z[d^{out}(v)] + Z[b(v)] + Z[e(v)]$$
 
-Top 50 nodes per group retained as candidate key drivers.
+Top ( e.g: 50, 100, 150, 1000)  nodes per group   retained as candidate key drivers.
 
 ## Asthma-vs-control hub comparison & replication
 
@@ -209,9 +209,9 @@ Genetic variants are fixed at conception, so convergence with $G_{GWAS}$ provide
 
 ## Software
 
-R-based pipeline: **MatrixEQTL** (eQTM regression) · **sva** (surrogate variable analysis) · **bnlearn** (Bayesian network learning, bootstrap confidence) · **igraph** (centrality) · **clusterProfiler** + `org.Hs.eg.db` (GO enrichment) · **MAGMA** / **TWAS/S-PrediXcan** with GTEx weights (external validation) · **pwr** (power analysis) · **tidyverse** (data manipulation). A fixed random seed was used for all bootstrap and stochastic structure-learning steps.
+R-based pipeline:  ours **traceAsthma** (sex/disese-stratified causal inference pipeline) **MatrixEQTL** (eQTM regression) · **sva** (surrogate variable analysis) · **bnlearn** (Bayesian network learning, bootstrap confidence) · **igraph** (centrality) · **clusterProfiler** + `org.Hs.eg.db` (GO enrichment) · **MAGMA** / **TWAS/S-PrediXcan** with GTEx weights (external validation) · **pwr** (power analysis) · **tidyverse** (data manipulation). A fixed random seed was used for all bootstrap and stochastic structure-learning steps.
 
-> Given the reduced sample size inherent to disease-stratified subgroup analysis, Bayesian network structures should be interpreted as **hypothesis-generating rather than confirmatory**; bootstrap edge-confidence thresholding ($\tau=0.85$) mitigates instability at reduced sample sizes.
+
 
 ## References
 
