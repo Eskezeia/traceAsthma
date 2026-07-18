@@ -211,7 +211,7 @@ Genetic variants are fixed at conception, so convergence with $G_{GWAS}$ provide
 
 R-based pipeline:  ours **traceAsthma** (sex/disese-stratified causal inference pipeline) **MatrixEQTL** (eQTM regression) · **sva** (surrogate variable analysis) · **bnlearn** (Bayesian network learning, bootstrap confidence) · **igraph** (centrality) · **clusterProfiler** + `org.Hs.eg.db` (GO enrichment) · **MAGMA** / **TWAS/S-PrediXcan** with GTEx weights (external validation) · **pwr** (power analysis) · **tidyverse** (data manipulation). A fixed random seed was used for all bootstrap and stochastic structure-learning steps.
 
-> Given the reduced sample size inherent to disease-stratified subgroup analysis, Bayesian network structures should be interpreted as **hypothesis-generating rather than confirmatory**; bootstrap edge-confidence thresholding ($\tau=0.85$) mitigates instability at reduced sample sizes.
+
 
 ## References
 
