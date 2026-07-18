@@ -174,7 +174,7 @@ Composite score per node from standardized centrality measures (`igraph`): out-d
 
 $$\text{Score}(v) = Z[d^{out}(v)] + Z[b(v)] + Z[e(v)]$$
 
-Top 50 nodes per group retained as candidate key drivers.
+Top ( e.g: 50, 100, 150, 1000)  nodes per group   retained as candidate key drivers.
 
 ## Asthma-vs-control hub comparison & replication
 
