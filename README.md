@@ -11,7 +11,7 @@ SNP -> MPRS -> CpG methylation -> eQTM score -> TF activity -> TRACE score -> As
 ## Installation
 
 ```r
-# once published to r-universe / GitHub:
+#  GitHub:
 remotes::install_github("Eskezeia/traceAsthma")
 
 # to build core (Imports-only) functionality locally from source, no
