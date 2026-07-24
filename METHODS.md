@@ -98,7 +98,7 @@ All five models were fit independently for cis- and trans-eQTM associations, in 
 | Discovery |BH-FDR < 0.05  | BH-FDR < 0.05 |
 | Replication | nominal *p* < 0.05 | nominal *p* < 0.05 |
 
-The replication dataset uses a reduced covariate set (age only vs. age + site + plate + PC1 in discovery) — a data-availability limitation reported as such.
+The replication dataset uses a reduced covariate set-   a data-availability limitation reported as such.
 
 ## Precision filtering and family-wise FDR correction
 
