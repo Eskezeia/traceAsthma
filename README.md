@@ -112,23 +112,23 @@ utils::browseURL(system.file("doc-manual", "traceAsthma_Manual.pdf", package = "
 |---|---|
 | `R/01_qc.R` | Genotype / methylation / RNA-seq QC |
 | `R/02_prs.R` | Multi-trait polygenic risk score (MPRS) |
-| `R/03_eqtm.R` | Cis/trans eQTM discovery, mediation filtering, eQTM score |
-| `R/04_regulatory_network.R` | ARACNe/DoRothEA regulons, VIPER TF activity |
+| `R/03_eqtm.R` | Cis/trans eQTM discovery, mediation filtering, eQTM score 
+| `R/04_regulatory_network.R` 
 | `R/05_trace_score.R` | TF filtering, stability selection, TRACE score |
-| `R/06_sem.R` | MPRS -> eQTM -> TRACE -> Asthma mediation SEM |
-| `R/07_risk_model.R` | Final logistic model, nested model comparison, nested CV |
-| `R/08_validation.R` | AUROC/AUPRC, calibration, NRI/IDI, decision curve analysis |
-| `R/09_predict.R` | Deployable model object + clinician-facing prediction |
-| `R/10_pipeline.R` | End-to-end orchestrator (full data specification) |
-| `R/11_figures.R` | 600 dpi publication figures (Nature-style labeling) |
-| `R/12_tables.R` | Publication tables with footnotes, CSV/xlsx export |
-| `R/13_auto_pipeline.R` | Adaptive pipeline for partial/incomplete data + dependency listing |
-| `R/14_clinical_interpretation.R` | Plain-language absolute risk, calibration, and mediation narrative |
-| `R/15_simulate.R` | Realistic genetic/epigenetic/clinical data simulation with ground truth |
-| `R/16_data_import.R` | Multi-format data import/export (CSV, Excel, RDS, Parquet, database) |
-| `R/17_data_validation.R` | Structural/range/alignment validation before analysis |
-| `R/18_data_dictionary.R` | Data dictionary and blank-template generation for real-data mapping |
-| `inst/shiny/app.R` | Point-of-care Shiny app |
+| `R/06_sem.R` | MPRS -> eQTM -> TRACE -> Asthma mediation SEM 
+| `R/07_risk_model.R` 
+| `R/08_validation.R` 
+| `R/09_predict.R` | 
+| `R/10_pipeline.R` 
+| `R/11_figures.R` 
+| `R/12_tables.R` 
+| `R/13_auto_pipeline.R` 
+| `R/14_clinical_interpretation.R` 
+| `R/15_simulate.R` 
+| `R/16_data_import.R` 
+| `R/17_data_validation.R` 
+| `R/18_data_dictionary.R` 
+| `inst/shiny/app.R` 
 
 
 
