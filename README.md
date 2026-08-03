@@ -108,17 +108,16 @@ utils::browseURL(system.file("doc-manual", "traceAsthma_Manual.pdf", package = "
 
 ## Package structure
 
-| File | Stage |
-|---|---|
-| `R/01_qc.R` | Genotype / methylation / RNA-seq QC |
-| `R/02_prs.R` | Multi-trait polygenic risk score (MPRS) |
-| `R/03_eqtm.R` | Cis/trans eQTM discovery, mediation filtering, eQTM score 
+| File 
+| `R/01_qc.R` 
+| `R/02_prs.R` 
+| `R/03_eqtm.R`  
 | `R/04_regulatory_network.R` 
-| `R/05_trace_score.R` | TF filtering, stability selection, TRACE score |
-| `R/06_sem.R` | MPRS -> eQTM -> TRACE -> Asthma mediation SEM 
+| `R/05_trace_score.R` 
+| `R/06_sem.R` 
 | `R/07_risk_model.R` 
 | `R/08_validation.R` 
-| `R/09_predict.R` | 
+| `R/09_predict.R` 
 | `R/10_pipeline.R` 
 | `R/11_figures.R` 
 | `R/12_tables.R` 
