@@ -209,7 +209,7 @@ Genetic variants are fixed at conception, so convergence with $G_{GWAS}$ provide
 
 ## Software
 
-R-based pipeline:  ours **traceAsthma** (sex/disese-stratified causal inference pipeline) **MatrixEQTL** (eQTM regression) · **sva** (surrogate variable analysis) · **bnlearn** (Bayesian network learning, bootstrap confidence) · **igraph** (centrality) · **clusterProfiler** + `org.Hs.eg.db` (GO enrichment) · **MAGMA** / **TWAS/S-PrediXcan** with GTEx weights (external validation) · **pwr** (power analysis) · **tidyverse** (data manipulation). A fixed random seed was used for all bootstrap and stochastic structure-learning steps.
+R-based pipeline:  ours **traceAsthma** (disese-stratified causal inference pipeline) **MatrixEQTL** (eQTM regression) · **sva** (surrogate variable analysis) · **bnlearn** (Bayesian network learning, bootstrap confidence) · **igraph** (centrality) · **clusterProfiler** + `org.Hs.eg.db` (GO enrichment) · **MAGMA** / **TWAS/S-PrediXcan** with GTEx weights (external validation) · **pwr** (power analysis) · **tidyverse** (data manipulation). A fixed random seed was used for all bootstrap and stochastic structure-learning steps.
 
 
 
